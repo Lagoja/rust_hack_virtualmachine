@@ -1,0 +1,7 @@
+[package]
+name = "rusthackvm"
+version = "0.1.0"
+authors = ["John Lago <750845+Lagoja@users.noreply.github.com>"]
+
+[dependencies]
+regex = '1'
