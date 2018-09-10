@@ -20,7 +20,7 @@ pub enum TokenType {
 }
 
 // Token Struct
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Token {
     pub token: String,
     pub token_type: TokenType,
@@ -41,7 +41,7 @@ impl Token {
     }
 }
 
-type TokenList = Vec<Token>;
+pub type TokenList = Vec<Token>;
 
 //MatchRule Struct
 pub struct MatchRule {
