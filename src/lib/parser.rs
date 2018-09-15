@@ -2,8 +2,8 @@ use lib::tokenizer::{Token, TokenList, TokenType};
 
 #[derive(Debug, PartialEq)]
 pub enum Command {
-    Push { arg1: String, arg2: u16 },
-    Pop { arg1: String, arg2: u16 },
+    Push { segment: String, index: u16 },
+    Pop { segment: String, index: u16 },
     Arithmetic(TokenType),
 }
 
@@ -82,12 +82,12 @@ impl Parser {
         if arg1.token_type == TokenType::Symbol && arg2.token_type == TokenType::Index {
             match c.token_type {
                 TokenType::Push => Some(Command::Push {
-                    arg1: String::from(arg1.token.clone()),
-                    arg2: arg2.token.parse::<u16>().unwrap(),
+                    segment: String::from(arg1.token.clone()),
+                    index: arg2.token.parse::<u16>().unwrap(),
                 }),
                 TokenType::Pop => Some(Command::Pop {
-                    arg1: String::from(arg1.token.clone()),
-                    arg2: arg2.token.parse::<u16>().unwrap(),
+                    segment: String::from(arg1.token.clone()),
+                    index: arg2.token.parse::<u16>().unwrap(),
                 }),
                 _ => return None,
             }
@@ -121,8 +121,8 @@ mod test {
         assert_eq!(
             output.unwrap(),
             Some(Command::Push {
-                arg1: String::from("local"),
-                arg2: 0
+                segment: String::from("local"),
+                index: 0
             })
         );
     }
