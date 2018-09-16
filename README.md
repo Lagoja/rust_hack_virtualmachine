@@ -11,4 +11,4 @@
     - [X] greater_than
     - [X] less_than
     - [X] equal
-- [ ] Pointer references
+- [X] Pointer references
