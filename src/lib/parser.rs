@@ -1,42 +1,10 @@
 use lib::tokenizer::{Token, TokenList, TokenType};
 
 #[derive(Debug, PartialEq)]
-pub enum CommandType {
-    Push,
-    Pop,
-    Add,
-    Subtract,
-    Negate,
-    Equal,
-    LessThan,
-    GreaterThan,
-    And,
-    Or,
-    Not,
-}
-
-#[derive(Debug, PartialEq)]
-pub struct Command {
-    command_type: CommandType,
-    pub arg1: Option<String>,
-    pub arg2: Option<String>,
-    pub is_arithmetic: bool,
-}
-
-impl Command {
-    pub fn new(
-        command_type: CommandType,
-        arg1: Option<String>,
-        arg2: Option<String>,
-        is_arithmetic: bool,
-    ) -> Command {
-        Command {
-            command_type,
-            arg1,
-            arg2,
-            is_arithmetic,
-        }
-    }
+pub enum Command {
+    Push { segment: String, index: u16 },
+    Pop { segment: String, index: u16 },
+    Arithmetic(TokenType),
 }
 
 #[derive(Debug)]
@@ -54,9 +22,9 @@ impl Parser {
     }
 
     pub fn from(tokens: Vec<TokenList>) -> Parser {
-        Parser{
+        Parser {
             tokens,
-            next_command: 0
+            next_command: 0,
         }
     }
 
@@ -74,7 +42,6 @@ impl Parser {
         let mut t_iter = token_list.iter();
         //Empty lines or comments should return Ok(None), so the writer knows to skip them. Bad input or syntax should return an Error, so that we can interrupt parsing.
         let mut result: Option<Command> = None;
-
         //Need to handle empty lines
         let c: &Token = match t_iter.next() {
             Some(x) => x,
@@ -98,53 +65,42 @@ impl Parser {
                 let arg2 = t_iter.next().unwrap();
                 match Parser::mem_access_parse(c, arg1, arg2) {
                     Some(comm) => Some(comm),
-                    None => return Err("Improper arguments for Memory Access Command")
+                    None => return Err("Improper arguments for Memory Access Command"),
                 }
             }
             // At this stage, any remaining commands should be Arithmetic
-            _ => match Parser::al_parse(c) {
-                Some(comm) => Some (comm),
-                None => return Err("Improper arguments for Arthmetic Command")
-            }
+            _ => match Parser::arithmetic_parse(c) {
+                Some(comm) => Some(comm),
+                None => return Err("Improper arguments for Arthmetic Command"),
+            },
         };
 
         Ok(result)
     }
 
     fn mem_access_parse(c: &Token, arg1: &Token, arg2: &Token) -> Option<Command> {
-        let command_type = match c.token_type {
-            TokenType::Push => CommandType::Push,
-            TokenType::Pop => CommandType::Pop,
-            _ => return None,
-        };
         if arg1.token_type == TokenType::Symbol && arg2.token_type == TokenType::Index {
-            return Some(Command::new(
-                command_type,
-                Some(String::from(arg1.token.clone())),
-                Some(String::from(arg2.token.clone())),
-                false,
-            ));
+            match c.token_type {
+                TokenType::Push => Some(Command::Push {
+                    segment: String::from(arg1.token.clone()),
+                    index: arg2.token.parse::<u16>().unwrap(),
+                }),
+                TokenType::Pop => Some(Command::Pop {
+                    segment: String::from(arg1.token.clone()),
+                    index: arg2.token.parse::<u16>().unwrap(),
+                }),
+                _ => return None,
+            }
         } else {
-            return None;
+            None
         }
     }
 
-    fn al_parse(c: &Token) -> Option<Command> {
-        let command_type = match c.token_type {
-            TokenType::Add => CommandType::Add,
-            TokenType::Subtract => CommandType::Subtract,
-            TokenType::Negate => CommandType::Negate,
-            TokenType::Equal => CommandType::Equal,
-            TokenType::GreaterThan => CommandType::GreaterThan,
-            TokenType::LessThan => CommandType::LessThan,
-            TokenType::And => CommandType::And,
-            TokenType::Or => CommandType::Or,
-            TokenType::Not => CommandType::Not,
-            _ => return None,
-        };
-
-        Some(Command::new(command_type, None, None, true))
+    fn arithmetic_parse(c: &Token) -> Option<Command> {
+        Some(Command::Arithmetic(c.token_type))
     }
+
+    //Add another method for processing the leftover tokens, warn on syntax violations
 }
 
 #[cfg(test)]
@@ -162,19 +118,25 @@ mod test {
 
         let output = parser.parse(input);
 
-        assert_eq!(output.unwrap(), Some(Command::new(CommandType::Push, Some(String::from("local")), Some(String::from("0")),false)));
-
+        assert_eq!(
+            output.unwrap(),
+            Some(Command::Push {
+                segment: String::from("local"),
+                index: 0
+            })
+        );
     }
 
     #[test]
     fn arithmetic_parse_test() {
         let mut parser = Parser::new();
-        let input: TokenList = vec![
-            Token::from(String::from("add"), TokenType::Add, true),
-        ];
+        let input: TokenList = vec![Token::from(String::from("add"), TokenType::Add, true)];
 
         let output = parser.parse(input);
-        assert_eq!(output.unwrap(), Some(Command::new(CommandType::Add, None, None,true)));
+        assert_eq!(
+            output.unwrap(),
+            Some(Command::Arithmetic(TokenType::Add))
+        );
     }
 
     #[test]
@@ -187,6 +149,21 @@ mod test {
 
         let output = parser.parse(input);
         assert_eq!(output.unwrap(), None);
+    }
+
+    #[test]
+    fn inline_comment_parse_test() {
+        let mut parser = Parser::new();
+        let input: TokenList = vec![
+            Token::from(String::from("add"), TokenType::Add, true),
+            Token::from(String::from("//"), TokenType::Comment, false),
+        ];
+
+        let output = parser.parse(input);
+        assert_eq!(
+            output.unwrap(),
+            Some(Command::Arithmetic(TokenType::Add))
+        );
     }
 
     #[test]

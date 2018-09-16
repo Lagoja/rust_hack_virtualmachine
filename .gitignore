@@ -1,3 +1,5 @@
 /target
 **/*.rs.bk
 README.pdf
+test_programs/
+notes

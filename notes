@@ -1,0 +1,39 @@
+//Push Constant 10 to the stack
+PUSH
+0	@10  //Get the value
+1	D=A   
+2	@SP   // Push D to the stack
+3	A=M
+4	M=D  
+5	@SP  //Increment the pointer
+6	M=M+1
+
+//Pop a Value off the Stack
+POP
+7	@SP
+8	AM=M-1
+9	D=M
+10	M=0
+
+//Put the value in segment local[2]
+@LCL
+D=M
+@2
+D=D+A  <- the local[2] address
+@R13
+M=D <-Store the address
+POP
+@R13
+A=M <- Retrieve the address
+M=D <- Push the value to the address
+
+//Get the value from a segment local 
+@LCL
+D=M
+@2
+A=D+A
+A=M
+PUSH
+
+
+

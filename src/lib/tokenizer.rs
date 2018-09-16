@@ -104,10 +104,10 @@ pub fn default_ruleset() -> Vec<MatchRule> {
     vec![
         //Comments
         MatchRule::new(TokenType::Comment, Regex::new(r"^//").unwrap(), false),
-        //Memory Management
+        //Memory Access
         MatchRule::new(TokenType::Push, Regex::new("push").unwrap(), true),
         MatchRule::new(TokenType::Pop, Regex::new("pop").unwrap(), true),
-        //Arthmetic + Logical Operations
+        //Arthmetic 
         MatchRule::new(TokenType::Add, Regex::new("add").unwrap(), true),
         MatchRule::new(TokenType::Subtract, Regex::new("sub").unwrap(), true),
         MatchRule::new(TokenType::Negate, Regex::new("neg").unwrap(), true),
@@ -117,7 +117,7 @@ pub fn default_ruleset() -> Vec<MatchRule> {
         MatchRule::new(TokenType::And, Regex::new("and").unwrap(), true),
         MatchRule::new(TokenType::Or, Regex::new("or").unwrap(), true),
         MatchRule::new(TokenType::Not, Regex::new("not").unwrap(), true),
-        //Other Symbols
+        //Symbols
         MatchRule::new(TokenType::Symbol, Regex::new(r"[a-z]+").unwrap(), false),
         MatchRule::new(TokenType::Index, Regex::new(r"[0-9]+").unwrap(), false),
     ]
@@ -129,7 +129,7 @@ mod test {
 
     #[test]
     fn initialize_tokenizer() {
-        let t = Tokenizer::from(default_ruleset());
+        let _ = Tokenizer::from(default_ruleset());
     }
 
     #[test]
