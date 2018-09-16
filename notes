@@ -15,6 +15,7 @@ POP
 9	D=M
 10	M=0
 
+
 //Put the value in segment local[2]
 @LCL
 D=M
@@ -36,4 +37,27 @@ A=M
 PUSH
 
 
+//Comparison
+// Store y value in D, x value in A
+- GetOperand
+D=M-D
+@BRANCH1
+D;JEQ
+@0  //Get the value
+D=A   
+@SP   // Push D to the stack
+A=M
+M=D  
+@SP  //Increment the pointer
+M=M+1
+(BRANCH1END)
+(BRANCH1)
+@65535  //Get the value
+D=A   
+@SP   // Push D to the stack
+A=M
+M=D  
+@SP  //Increment the pointer
+M=M+1
+(BRANCH1END)
 

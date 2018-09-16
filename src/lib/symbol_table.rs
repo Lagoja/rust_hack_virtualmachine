@@ -20,6 +20,7 @@ impl SymbolTable {
         ("that", &Address::Relative("THAT")),
         ("temp", &Address::Absolute(5)),
         ("static", &Address::Absolute(16)),
+        ("pointer", &Address::Absolute(3)),
     ];
 
     pub fn new() -> SymbolTable {

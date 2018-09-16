@@ -1,7 +1,7 @@
-use lib::writer::AsmWriter;
+use lib::parser::{Command, Parser};
 use lib::symbol_table::SymbolTable;
 use lib::tokenizer::{default_ruleset, TokenList, Tokenizer};
-use lib::parser::{Parser, Command};
+use lib::writer::AsmWriter;
 use std::env;
 use std::error::Error;
 use std::fs::File;
@@ -64,14 +64,17 @@ pub fn run(config: Config) -> Result<(), Box<Error>> {
     let mut parser = Parser::from(tokens);
     let mut cl: Vec<Command> = vec![];
 
-    while parser.has_more_commands(){
-        let comm = match parser.advance()?{
+    while parser.has_more_commands() {
+        match parser.advance()? {
             Some(comm) => cl.push(comm),
             None => continue,
         };
     }
 
-    let out: Vec<String> = cl.into_iter().map(|comm| writer.write_command(comm).unwrap()).collect();
+    let out: Vec<String> = cl
+        .into_iter()
+        .map(|comm| writer.write_command(comm).unwrap())
+        .collect();
 
     write_asm_file(out.join(""), &config.outfile).unwrap();
 
