@@ -1,10 +1,11 @@
 use lib::parser::Command;
-use lib::symbol_table::{SymbolTable, Address};
+use lib::symbol_table::{Address, SymbolTable};
 use lib::tokenizer::TokenType;
 
 #[derive(Debug)]
 pub struct AsmWriter {
     pointer: u16,
+    branch_count: u16,
     symbol_table: SymbolTable,
 }
 
@@ -12,11 +13,12 @@ impl AsmWriter {
     pub fn from(symbol_table: SymbolTable) -> AsmWriter {
         AsmWriter {
             pointer: 0,
+            branch_count: 0,
             symbol_table,
         }
     }
 
-    pub fn write_command(&self, command: Command) -> Result<String, &'static str> {
+    pub fn write_command(&mut self, command: Command) -> Result<String, &'static str> {
         match command {
             Command::Push { segment, index } => self.write_push(segment, index),
             Command::Pop { segment, index } => self.write_pop(segment, index),
@@ -35,16 +37,19 @@ impl AsmWriter {
                 None => return Err("Invalid segment provided"),
             };
             match seg {
-                Address::Relative(addr) => stepvec = vec![
-                AsmWriter::value_from_segment_to_a(addr, index),
-                AsmWriter::push_from_a(),
-            ],
-                Address::Absolute(addr) => stepvec = vec![
-                    String::from(format!("@{}\nA=M\n", addr + index)),
-                    AsmWriter::push_from_a(),
-                ]
-            }
-;
+                Address::Relative(addr) => {
+                    stepvec = vec![
+                        AsmWriter::value_from_segment_to_a(addr, index),
+                        AsmWriter::push_from_a(),
+                    ]
+                }
+                Address::Absolute(addr) => {
+                    stepvec = vec![
+                        String::from(format!("@{}\nA=M\n", addr + index)),
+                        AsmWriter::push_from_a(),
+                    ]
+                }
+            };
         }
         Ok(stepvec.join(""))
     }
@@ -60,71 +65,129 @@ impl AsmWriter {
                 None => return Err("Invalid segment provided"),
             };
             match seg {
-                Address::Relative(addr) => stepvec = vec![
-                AsmWriter::save_segment_addr_to_r13(addr, index),
-                AsmWriter::write_pop_to_d(),
-                AsmWriter::save_d_to_r13_segment_address(),
-            ],
-                Address::Absolute(addr) => stepvec = vec![
-                    AsmWriter::write_pop_to_d(),
-                    String::from(format!("@{}\nM=D\n", addr + index))
-                ]
+                Address::Relative(addr) => {
+                    stepvec = vec![
+                        AsmWriter::save_segment_addr_to_r13(addr, index),
+                        AsmWriter::write_pop_to_d(),
+                        AsmWriter::save_d_to_r13_segment_address(),
+                    ]
+                }
+                Address::Absolute(addr) => {
+                    stepvec = vec![
+                        AsmWriter::write_pop_to_d(),
+                        String::from(format!("@{}\nM=D\n", addr + index)),
+                    ]
+                }
             }
-
         }
         Ok(stepvec.join(""))
     }
 
-    pub fn write_arithmetic(&self, token_type: TokenType) -> Result<String, &'static str> {
+    fn write_arithmetic(&mut self, token_type: TokenType) -> Result<String, &'static str> {
         match token_type {
-            TokenType::Add => Ok(AsmWriter::add()),
-            TokenType::Subtract => Ok(AsmWriter::subtract()),
-            TokenType::And => Ok(AsmWriter::and()),
-            TokenType::Or => Ok(AsmWriter::or()),
-            TokenType::Negate => Ok(AsmWriter::negate()),
+            TokenType::Add => Ok(self.add()),
+            TokenType::Subtract => Ok(self.subtract()),
+            TokenType::And => Ok(self.and()),
+            TokenType::Or => Ok(self.or()),
+            TokenType::Not => Ok(self.not()),
+            TokenType::Negate => Ok(self.negate()),
+            TokenType::Equal => Ok(self.equal()),
+            TokenType::GreaterThan => Ok(self.greater_than()),
+            TokenType::LessThan => Ok(self.less_than()),
             _ => Err("Invalid arithmetic command"),
         }
     }
 
     fn get_operands() -> String {
-        let stepvec = vec![
-            AsmWriter::write_pop_to_d(),
-            AsmWriter::peek_next_value(),
-        ];
+        // Puts y in d, and x in a
+        let stepvec = vec![AsmWriter::write_pop_to_d(), AsmWriter::peek_next_value()];
         stepvec.join("")
     }
 
-    fn add() -> String {
+    fn equal(&mut self) -> String {
+        let mut out = AsmWriter::get_operands();
+        out.push_str(&self.write_comparison("JEQ"));
+        self.branch_count += 1;
+        out
+    }
+
+    fn greater_than(&mut self) -> String {
+        let mut out = AsmWriter::get_operands();
+        out.push_str(&self.write_comparison("JGT"));
+        self.branch_count += 1;
+        out
+    }
+
+    fn less_than(&mut self) -> String {
+        let mut out = AsmWriter::get_operands();
+        out.push_str(&self.write_comparison("JLT"));
+        self.branch_count += 1;
+        out
+    }
+
+    fn write_comparison(&self, instruction: &str) -> String {
+        let out = format!("D=M-D
+@BRANCH{bcount}
+D;{in}
+@0
+D=A
+@SP
+A=M
+M=D
+@SP
+M=M+1
+@BRANCH{bcount}END
+0;JMP
+(BRANCH{bcount})
+D=-1
+@SP
+A=M
+M=D
+@SP
+M=M+1
+(BRANCH{bcount}END)
+",in=instruction, bcount=self.branch_count);
+        String::from(out)
+    }
+
+    fn add(&self) -> String {
         let mut out = AsmWriter::get_operands();
         out.push_str(&format!("D=D+M\n"));
         out.push_str(&AsmWriter::push_from_d());
         out
     }
 
-    fn and() -> String {
+    fn and(&self) -> String {
         let mut out = AsmWriter::get_operands();
         out.push_str(&format!("D=D&M\n"));
         out.push_str(&AsmWriter::push_from_d());
         out
     }
 
-    fn or() -> String {
+    fn or(&self) -> String {
         let mut out = AsmWriter::get_operands();
         out.push_str(&format!("D=D|M\n"));
         out.push_str(&AsmWriter::push_from_d());
         out
     }
 
-    fn subtract() -> String {
+    fn subtract(&self) -> String {
         let mut out = AsmWriter::get_operands();
         out.push_str(&format!("D=M-D\n"));
         out.push_str(&AsmWriter::push_from_d());
         out
     }
 
-    fn negate() -> String {
+    fn not(&self) -> String {
         let mut out = AsmWriter::write_pop_to_d();
-        out.push_str(&format!("D=-D"));
+        out.push_str(&format!("D=!D\n"));
+        out.push_str(&AsmWriter::push_from_d());
+        out
+    }
+
+    fn negate(&self) -> String {
+        let mut out = AsmWriter::write_pop_to_d();
+        out.push_str(&format!("D=-D\n"));
         out.push_str(&AsmWriter::push_from_d());
         out
     }
@@ -185,7 +248,7 @@ mod tests {
     fn test_add() {
         let mut st = SymbolTable::new();
         st.load_starting_table();
-        let writer = AsmWriter::from(st);
+        let mut writer = AsmWriter::from(st);
         let out = writer.write_command(Command::Arithmetic(TokenType::Add));
         assert_eq!(
             out.unwrap(),
@@ -209,8 +272,10 @@ M=M+1
 
     #[test]
     fn test_add_writer() {
+        let st = SymbolTable::new();
+        let writer = AsmWriter::from(st);
         assert_eq!(
-            AsmWriter::add(),
+            writer.add(),
             String::from(
                 "@SP
 AM=M-1
@@ -224,6 +289,40 @@ A=M
 M=D
 @SP
 M=M+1
+"
+            )
+        );
+    }
+
+    #[test]
+    fn test_equal_writer() {
+        let st = SymbolTable::new();
+        let mut writer = AsmWriter::from(st);
+        let out = writer.write_command(Command::Arithmetic(TokenType::Equal));
+        assert_eq!(
+            out.unwrap(),
+            String::from(
+                "@SP\nAM=M-1\nD=M\nM=0\n@SP\nAM=M-1\nD=M-D
+@BRANCH0
+D;JEQ
+@0
+D=A
+@SP
+A=M
+M=D
+@SP
+M=M+1
+@BRANCH0END
+0;JMP
+(BRANCH0)
+@Address0fXFFF
+D=A
+@SP
+A=M
+M=D
+@SP
+M=M+1
+(BRANCH0END)
 "
             )
         );

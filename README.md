@@ -6,5 +6,9 @@
 4. ( Frontend ) Open and read/write files -- DONE
 
 # Missing Features:
-- [ ] Comparison functions
+- [X] Comparison functions
+    - [X] not
+    - [X] greater_than
+    - [X] less_than
+    - [X] equal
 - [ ] Pointer references

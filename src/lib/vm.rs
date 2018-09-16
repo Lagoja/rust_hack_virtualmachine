@@ -54,7 +54,7 @@ pub fn run(config: Config) -> Result<(), Box<Error>> {
     st.load_starting_table();
 
     let tokenizer = Tokenizer::from(default_ruleset());
-    let writer: AsmWriter = AsmWriter::from(st);
+    let mut writer: AsmWriter = AsmWriter::from(st);
 
     let tokens: Vec<TokenList> = raw_commands
         .into_iter()
