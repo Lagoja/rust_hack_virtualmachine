@@ -129,7 +129,7 @@ mod test {
 
     #[test]
     fn initialize_tokenizer() {
-        let t = Tokenizer::from(default_ruleset());
+        let _ = Tokenizer::from(default_ruleset());
     }
 
     #[test]
