@@ -27,7 +27,7 @@ impl AsmWriter {
     }
 
     fn write_push(&self, segment: String, index: u16) -> Result<String, &'static str> {
-        let mut stepvec: Vec<String> = vec![];
+        let stepvec: Vec<String>;
         let seg: Address;
         if segment == "constant" {
             stepvec = vec![AsmWriter::constant_to_a(index), AsmWriter::push_from_a()];
@@ -55,7 +55,7 @@ impl AsmWriter {
     }
 
     fn write_pop(&self, segment: String, index: u16) -> Result<String, &'static str> {
-        let mut stepvec: Vec<String> = vec![];
+        let stepvec: Vec<String>;
         let seg: Address;
         if segment == "constant" {
             return Err("Cannot pop to constant");
@@ -129,8 +129,7 @@ impl AsmWriter {
         let out = format!("D=M-D
 @BRANCH{bcount}
 D;{in}
-@0
-D=A
+D=0
 @SP
 A=M
 M=D
@@ -305,8 +304,7 @@ M=M+1
                 "@SP\nAM=M-1\nD=M\nM=0\n@SP\nAM=M-1\nD=M-D
 @BRANCH0
 D;JEQ
-@0
-D=A
+D=0
 @SP
 A=M
 M=D
@@ -315,8 +313,7 @@ M=M+1
 @BRANCH0END
 0;JMP
 (BRANCH0)
-@Address0fXFFF
-D=A
+D=-1
 @SP
 A=M
 M=D

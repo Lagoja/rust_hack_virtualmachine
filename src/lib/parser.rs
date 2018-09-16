@@ -38,7 +38,7 @@ impl Parser {
         self.parse(token_list)
     }
 
-    pub fn parse(&mut self, token_list: TokenList) -> Result<Option<Command>, &'static str> {
+    fn parse(&mut self, token_list: TokenList) -> Result<Option<Command>, &'static str> {
         let mut t_iter = token_list.iter();
         //Empty lines or comments should return Ok(None), so the writer knows to skip them. Bad input or syntax should return an Error, so that we can interrupt parsing.
         let mut result: Option<Command> = None;
