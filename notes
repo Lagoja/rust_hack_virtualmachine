@@ -61,3 +61,11 @@ M=D
 M=M+1
 (BRANCH1END)
 
+//If GOTO
+//Pop value to D
+@SP
+AM=M-1
+D=M
+M=0
+@LABEL
+D;JEQ

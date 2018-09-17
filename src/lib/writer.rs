@@ -23,6 +23,9 @@ impl AsmWriter {
             Command::Push { segment, index } => self.write_push(segment, index),
             Command::Pop { segment, index } => self.write_pop(segment, index),
             Command::Arithmetic(token_type) => self.write_arithmetic(token_type),
+            Command::If(label) => self.write_if(label),
+            Command::Goto(label) => self.write_goto(label),
+            Command::Label(label) => self.write_label(label),
         }
     }
 
@@ -96,6 +99,20 @@ impl AsmWriter {
             TokenType::LessThan => Ok(self.less_than()),
             _ => Err("Invalid arithmetic command"),
         }
+    }
+
+    fn write_label(&mut self, label:String) -> Result<String, &'static str> {
+        Ok(format!("({})\n", &label))
+    }
+
+    fn write_goto(&mut self, label:String) -> Result<String, &'static str> {
+        Ok(format!("@{}\n0;JMP\n", &label))
+    }
+
+    fn write_if(&mut self, label:String) -> Result<String, &'static str>{
+        let mut out = AsmWriter::write_pop_to_d();
+        out.push_str(&format!("@{}\nD;JGT\n", label));
+        Ok(out)
     }
 
     fn get_operands() -> String {
