@@ -5,6 +5,9 @@ pub enum Command {
     Push { segment: String, index: u16 },
     Pop { segment: String, index: u16 },
     Arithmetic(TokenType),
+    Goto(String),
+    If(String),
+    Label(String),
 }
 
 #[derive(Debug)]
@@ -67,7 +70,14 @@ impl Parser {
                     Some(comm) => Some(comm),
                     None => return Err("Improper arguments for Memory Access Command"),
                 }
-            }
+            },
+            TokenType::Label | TokenType::If | TokenType::Goto => {
+                let arg1 = t_iter.next().unwrap();
+                match Parser::control_flow_parse(c, arg1) {
+                    Some(comm) => Some(comm),
+                    None => return Err("Improper arguments for Control Flow Command")
+                }
+            },
             // At this stage, any remaining commands should be Arithmetic
             _ => match Parser::arithmetic_parse(c) {
                 Some(comm) => Some(comm),
@@ -90,6 +100,19 @@ impl Parser {
                     index: arg2.token.parse::<u16>().unwrap(),
                 }),
                 _ => return None,
+            }
+        } else {
+            None
+        }
+    }
+
+    fn control_flow_parse(c: &Token, arg1: &Token) -> Option<Command> {
+        if arg1.token_type == TokenType::Symbol {
+            match c.token_type {
+                TokenType::Label => Some(Command::Label(arg1.token.clone())),
+                TokenType::Goto => Some(Command::Goto(arg1.token.clone())),
+                TokenType::If => Some(Command::If(arg1.token.clone())),
+                _ => None,
             }
         } else {
             None

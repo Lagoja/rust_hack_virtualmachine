@@ -16,6 +16,9 @@ pub enum TokenType {
     Symbol,
     Index,
     Comment,
+    Label,
+    If,
+    Goto,
     Undefined,
 }
 
@@ -118,7 +121,10 @@ pub fn default_ruleset() -> Vec<MatchRule> {
         MatchRule::new(TokenType::Or, Regex::new("or").unwrap(), true),
         MatchRule::new(TokenType::Not, Regex::new("not").unwrap(), true),
         //Symbols
-        MatchRule::new(TokenType::Symbol, Regex::new(r"[a-z]+").unwrap(), false),
+        MatchRule::new(TokenType::Label, Regex::new("label").unwrap(), true),
+        MatchRule::new(TokenType::If, Regex::new("if-goto").unwrap(), true),
+        MatchRule::new(TokenType::Goto, Regex::new("goto").unwrap(), true),
+        MatchRule::new(TokenType::Symbol, Regex::new(r"[a-z_]+").unwrap(), false),
         MatchRule::new(TokenType::Index, Regex::new(r"[0-9]+").unwrap(), false),
     ]
 }

@@ -6,9 +6,20 @@
 4. ( Frontend ) Open and read/write files -- DONE
 
 # Missing Features:
+## Phase One
 - [X] Comparison functions
     - [X] not
     - [X] greater_than
     - [X] less_than
     - [X] equal
 - [X] Pointer references
+## Phase Two
+- [ ] Multi-file support (pass a directory and process all .vm files inside)
+- [X] Program Control Flow 
+    - [X] label
+    - [X] goto-label
+    - [X] if-goto label
+- [ ] Function calls
+    - [ ] function declaration
+    - [ ] call function
+    - [ ] return function
