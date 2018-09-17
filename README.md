@@ -23,3 +23,6 @@
     - [ ] function declaration
     - [ ] call function
     - [ ] return function
+## Phase Three
+- [ ] Better Error Handling (w/ line number)
+- [ ] DRY up writer and other sections

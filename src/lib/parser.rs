@@ -8,6 +8,9 @@ pub enum Command {
     Goto(String),
     If(String),
     Label(String),
+    Function {symbol: String, nvars: u16},
+    Call {symbol: String, nargs: u16},
+    Return
 }
 
 #[derive(Debug)]

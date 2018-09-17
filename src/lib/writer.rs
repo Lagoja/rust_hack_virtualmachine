@@ -26,6 +26,7 @@ impl AsmWriter {
             Command::If(label) => self.write_if(label),
             Command::Goto(label) => self.write_goto(label),
             Command::Label(label) => self.write_label(label),
+            _ => Err("Command not implemented")
         }
     }
 
