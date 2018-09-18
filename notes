@@ -68,4 +68,71 @@ AM=M-1
 D=M
 M=0
 @LABEL
-D;JEQ
+D;JGT
+
+//Call g nargs
+// Assume args are already pushed onto the stack
+@RETURN{g}
+ -> PUSH_FROM_M
+@LCL
+ -> PUSH_FROM_M
+@ARG 
+ -> PUSH_FROM_M
+@THIS
+ -> PUSH_FROM_M
+@THAT 
+ -> PUSH_FROM_M
+@SP  //set Arg = SP-NARGS-5
+D=M
+@{nargs + 5}
+D=D-A
+@ARG
+M=D
+@SP
+D=M
+@LCL
+M=D
+ -> GOTO(G)
+(RETURN{g})
+
+//Return
+//frame = LCL
+@LCL
+D=M
+@R14 //frame
+M=D
+//Retaddr = frame -5
+@5
+D=D-A
+@R15 //retAddr
+M=D
+POP(ARG,0)
+//SP = Arg + 1
+@ARG
+D=M+1
+@SP
+M=D
+//Restore THAT
+@R14
+AM=M-1
+D=M
+@THAT
+M=D
+@R14
+AM=M-1
+D=M
+@THIS
+M=D
+@R14
+AM=M-1
+D=M
+@ARG
+M=D
+@R14
+AM=M-1
+D=M
+@LCL
+M=D
+@R15
+A=M
+0;JMP

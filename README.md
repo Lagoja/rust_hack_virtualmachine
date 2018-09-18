@@ -19,10 +19,11 @@
     - [X] label
     - [X] goto-label
     - [X] if-goto label
-- [ ] Function calls
-    - [ ] function declaration
-    - [ ] call function
-    - [ ] return function
+- [X] Function calls
+    - [X] function declaration
+    - [X] call function
+    - [X] return function
+- [] Bootstrapping
 ## Phase Three
 - [ ] Better Error Handling (w/ line number)
 - [ ] DRY up writer and other sections

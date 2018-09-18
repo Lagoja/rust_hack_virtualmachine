@@ -8,9 +8,9 @@ pub enum Command {
     Goto(String),
     If(String),
     Label(String),
-    Function {symbol: String, nvars: u16},
-    Call {symbol: String, nargs: u16},
-    Return
+    Function { symbol: String, nvars: u16 },
+    Call { symbol: String, nargs: u16 },
+    Return,
 }
 
 #[derive(Debug)]
@@ -73,15 +73,26 @@ impl Parser {
                     Some(comm) => Some(comm),
                     None => return Err("Improper arguments for Memory Access Command"),
                 }
-            },
+            }
             TokenType::Label | TokenType::If | TokenType::Goto => {
                 let arg1 = t_iter.next().unwrap();
                 match Parser::control_flow_parse(c, arg1) {
                     Some(comm) => Some(comm),
-                    None => return Err("Improper arguments for Control Flow Command")
+                    None => return Err("Improper arguments for Control Flow Command"),
                 }
-            },
+            }
             // At this stage, any remaining commands should be Arithmetic
+            TokenType::Call | TokenType::Function => {
+                let arg1 = t_iter.next().unwrap();
+                let arg2 = t_iter.next().unwrap();
+                match Parser::function_command_parse(c, arg1, arg2){
+                    Some(comm) => Some(comm),
+                    None => return Err("Improper arguments for Function Command"),
+                }
+            }
+            TokenType::Return => {
+                Some(Command::Return)
+            }
             _ => match Parser::arithmetic_parse(c) {
                 Some(comm) => Some(comm),
                 None => return Err("Improper arguments for Arthmetic Command"),
@@ -115,6 +126,24 @@ impl Parser {
                 TokenType::Label => Some(Command::Label(arg1.token.clone())),
                 TokenType::Goto => Some(Command::Goto(arg1.token.clone())),
                 TokenType::If => Some(Command::If(arg1.token.clone())),
+                _ => None,
+            }
+        } else {
+            None
+        }
+    }
+
+    fn function_command_parse(c: &Token, arg1: &Token, arg2: &Token) -> Option<Command> {
+        if arg1.token_type == TokenType::Symbol && arg2.token_type == TokenType::Index {
+            match c.token_type {
+                TokenType::Function => Some(Command::Function {
+                    symbol: arg1.token.clone(),
+                    nvars: arg2.token.parse::<u16>().unwrap(),
+                }),
+                TokenType::Call => Some(Command::Call {
+                    symbol: arg1.token.clone(),
+                    nargs: arg2.token.parse::<u16>().unwrap(),
+                }),
                 _ => None,
             }
         } else {
@@ -159,10 +188,7 @@ mod test {
         let input: TokenList = vec![Token::from(String::from("add"), TokenType::Add, true)];
 
         let output = parser.parse(input);
-        assert_eq!(
-            output.unwrap(),
-            Some(Command::Arithmetic(TokenType::Add))
-        );
+        assert_eq!(output.unwrap(), Some(Command::Arithmetic(TokenType::Add)));
     }
 
     #[test]
@@ -186,10 +212,7 @@ mod test {
         ];
 
         let output = parser.parse(input);
-        assert_eq!(
-            output.unwrap(),
-            Some(Command::Arithmetic(TokenType::Add))
-        );
+        assert_eq!(output.unwrap(), Some(Command::Arithmetic(TokenType::Add)));
     }
 
     #[test]
