@@ -19,6 +19,9 @@ pub enum TokenType {
     Label,
     If,
     Goto,
+    Function,
+    Call,
+    Return,
     Undefined,
 }
 
@@ -124,7 +127,10 @@ pub fn default_ruleset() -> Vec<MatchRule> {
         MatchRule::new(TokenType::Label, Regex::new("label").unwrap(), true),
         MatchRule::new(TokenType::If, Regex::new("if-goto").unwrap(), true),
         MatchRule::new(TokenType::Goto, Regex::new("goto").unwrap(), true),
-        MatchRule::new(TokenType::Symbol, Regex::new(r"[a-z_]+").unwrap(), false),
+        MatchRule::new(TokenType::Function, Regex::new("function").unwrap(), true),
+        MatchRule::new(TokenType::Call, Regex::new("call").unwrap(), true),
+        MatchRule::new(TokenType::Return, Regex::new("return").unwrap(), true),
+        MatchRule::new(TokenType::Symbol, Regex::new(r"[a-z_.]+").unwrap(), false),
         MatchRule::new(TokenType::Index, Regex::new(r"[0-9]+").unwrap(), false),
     ]
 }

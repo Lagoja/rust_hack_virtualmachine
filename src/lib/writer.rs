@@ -26,6 +26,10 @@ impl AsmWriter {
             Command::If(label) => self.write_if(label),
             Command::Goto(label) => self.write_goto(label),
             Command::Label(label) => self.write_label(label),
+            Command::Call { symbol, nargs } => self.write_call(symbol, nargs),
+            Command::Function { symbol, nvars } => self.write_function(symbol, nvars),
+            Command::Return => self.write_return(),
+            _ => Err("Command not implemented"),
         }
     }
 
@@ -101,15 +105,53 @@ impl AsmWriter {
         }
     }
 
-    fn write_label(&mut self, label:String) -> Result<String, &'static str> {
+    fn write_call(&mut self, symbol: String, nargs: u16) -> Result<String, &'static str> {
+        let stepvec = vec![
+            format!("@RET-{}\n", symbol),
+            String::from("@LCL\n"),
+            AsmWriter::push_from_m(),
+            String::from("@ARG\n"),
+            AsmWriter::push_from_m(),
+            String::from("@THIS\n"),
+            AsmWriter::push_from_m(),
+            String::from("@THAT\n"),
+            AsmWriter::push_from_m(),
+            format!(
+                "@SP\nD=M\n@{}\nD=D-A\n@ARG\nM=D\n@SP\nD=M\n@LCL\nM=D",
+                nargs + 5
+            ),
+            self.write_goto(symbol.clone()).unwrap(),
+            format!("(RET-{})\n", symbol),
+        ];
+        Ok(stepvec.join(""))
+    }
+
+    fn write_function(&self, symbol: String, mut nvars: u16) -> Result<String, &'static str> {
+        let mut stepvec = vec![format!("({})\n", symbol)];
+        while nvars > 0 {
+            stepvec.push(self.write_push(String::from("constant"), 0).unwrap());
+            nvars -= 1;
+        }
+        Ok(stepvec.join(""))
+    }
+
+    fn write_return(&self) -> Result<String, &'static str> {
+        let stepvec = vec![String::from("@LCL\nD=M\n@R14\nM=D\n@5\nD=D-A\n@R15\nM=D\n"),
+        self.write_pop(String::from("argument"), 0).unwrap(),
+        String::from("@ARG\nD=M+1\n@SP\nM=D\n@R14\nAM=M-1\nD=M\n@THAT\nM=D\n@R14\nAM=M-1\nD=M\n@THIS\nM=D\n@R14\nAM=M-1\nD=M\n@ARG\nM=D\n@R14\nAM=M-1\nD=M\n@LCL\nM=D\n@R15\nA=M\n0;JMP")];
+
+        Ok(stepvec.join(""))
+    }
+
+    fn write_label(&self, label: String) -> Result<String, &'static str> {
         Ok(format!("({})\n", &label))
     }
 
-    fn write_goto(&mut self, label:String) -> Result<String, &'static str> {
-        Ok(format!("@{}\n0;JMP\n", &label))
+    fn write_goto(&self, label: String) -> Result<String, &'static str> {
+        Ok(format!("@{}\n0;JMP\n", label))
     }
 
-    fn write_if(&mut self, label:String) -> Result<String, &'static str>{
+    fn write_if(&mut self, label: String) -> Result<String, &'static str> {
         let mut out = AsmWriter::write_pop_to_d();
         out.push_str(&format!("@{}\nD;JGT\n", label));
         Ok(out)
@@ -231,6 +273,11 @@ M=M+1
     fn push_from_a() -> String {
         //Assumes that the pushed value is in A
         String::from("D=A\n@SP\nA=M\nM=D\n@SP\nM=M+1\n")
+    }
+
+    fn push_from_m() -> String {
+        //Assumes that the pushed value is in A
+        String::from("D=M\n@SP\nA=M\nM=D\n@SP\nM=M+1\n")
     }
 
     fn push_from_d() -> String {
