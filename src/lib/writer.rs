@@ -29,7 +29,6 @@ impl AsmWriter {
             Command::Call { symbol, nargs } => self.write_call(symbol, nargs),
             Command::Function { symbol, nvars } => self.write_function(symbol, nvars),
             Command::Return => self.write_return(),
-            _ => Err("Command not implemented"),
         }
     }
 
@@ -185,26 +184,8 @@ impl AsmWriter {
     }
 
     fn write_comparison(&self, instruction: &str) -> String {
-        let out = format!("D=M-D
-@BRANCH{bcount}
-D;{in}
-D=0
-@SP
-A=M
-M=D
-@SP
-M=M+1
-@BRANCH{bcount}END
-0;JMP
-(BRANCH{bcount})
-D=-1
-@SP
-A=M
-M=D
-@SP
-M=M+1
-(BRANCH{bcount}END)
-",in=instruction, bcount=self.branch_count);
+        let out = format!("D=M-D\n@BRANCH{bcount}\nD;{in}\nD=0\n@SP\nA=M\nM=D\n@SP\nM=M+1\n@BRANCH{bcount}END\n0;JMP\n(BRANCH{bcount})\nD=-1\n@SP\nA=M\nM=D\n@SP\nM=M+1\n(BRANCH{bcount}END)\n",
+        in=instruction, bcount=self.branch_count);
         String::from(out)
     }
 
