@@ -111,26 +111,26 @@ pub fn default_ruleset() -> Vec<MatchRule> {
         //Comments
         MatchRule::new(TokenType::Comment, Regex::new(r"^//").unwrap(), false),
         //Memory Access
-        MatchRule::new(TokenType::Push, Regex::new("push").unwrap(), true),
-        MatchRule::new(TokenType::Pop, Regex::new("pop").unwrap(), true),
+        MatchRule::new(TokenType::Push, Regex::new(r"^push").unwrap(), true),
+        MatchRule::new(TokenType::Pop, Regex::new(r"^pop").unwrap(), true),
         //Arthmetic 
-        MatchRule::new(TokenType::Add, Regex::new("add").unwrap(), true),
-        MatchRule::new(TokenType::Subtract, Regex::new("sub").unwrap(), true),
-        MatchRule::new(TokenType::Negate, Regex::new("neg").unwrap(), true),
-        MatchRule::new(TokenType::Equal, Regex::new("eq").unwrap(), true),
-        MatchRule::new(TokenType::GreaterThan, Regex::new("gt").unwrap(), true),
-        MatchRule::new(TokenType::LessThan, Regex::new("lt").unwrap(), true),
-        MatchRule::new(TokenType::And, Regex::new("and").unwrap(), true),
-        MatchRule::new(TokenType::Or, Regex::new("or").unwrap(), true),
-        MatchRule::new(TokenType::Not, Regex::new("not").unwrap(), true),
+        MatchRule::new(TokenType::Add, Regex::new(r"^add").unwrap(), true),
+        MatchRule::new(TokenType::Subtract, Regex::new(r"^sub").unwrap(), true),
+        MatchRule::new(TokenType::Negate, Regex::new(r"^neg").unwrap(), true),
+        MatchRule::new(TokenType::Equal, Regex::new(r"^eq").unwrap(), true),
+        MatchRule::new(TokenType::GreaterThan, Regex::new(r"^gt").unwrap(), true),
+        MatchRule::new(TokenType::LessThan, Regex::new(r"^lt").unwrap(), true),
+        MatchRule::new(TokenType::And, Regex::new(r"^and").unwrap(), true),
+        MatchRule::new(TokenType::Or, Regex::new(r"^or").unwrap(), true),
+        MatchRule::new(TokenType::Not, Regex::new(r"^not").unwrap(), true),
         //Symbols
-        MatchRule::new(TokenType::Label, Regex::new("label").unwrap(), true),
-        MatchRule::new(TokenType::If, Regex::new("if-goto").unwrap(), true),
-        MatchRule::new(TokenType::Goto, Regex::new("goto").unwrap(), true),
-        MatchRule::new(TokenType::Function, Regex::new("function").unwrap(), true),
-        MatchRule::new(TokenType::Call, Regex::new("call").unwrap(), true),
-        MatchRule::new(TokenType::Return, Regex::new("return").unwrap(), true),
-        MatchRule::new(TokenType::Symbol, Regex::new(r"[a-z_.]+").unwrap(), false),
+        MatchRule::new(TokenType::Label, Regex::new(r"^label").unwrap(), true),
+        MatchRule::new(TokenType::If, Regex::new(r"^if-goto").unwrap(), true),
+        MatchRule::new(TokenType::Goto, Regex::new(r"^goto").unwrap(), true),
+        MatchRule::new(TokenType::Function, Regex::new(r"^function").unwrap(), true),
+        MatchRule::new(TokenType::Call, Regex::new(r"^call").unwrap(), true),
+        MatchRule::new(TokenType::Return, Regex::new(r"^return").unwrap(), true),
+        MatchRule::new(TokenType::Symbol, Regex::new(r"^[a-zA-Z][a-zA-Z0-9_.]+").unwrap(), false),
         MatchRule::new(TokenType::Index, Regex::new(r"[0-9]+").unwrap(), false),
     ]
 }
@@ -210,6 +210,19 @@ mod test {
             Token::from(String::from("add"), TokenType::Add, true),
             Token::from(String::from("eq"), TokenType::Equal, true),
             Token::from(String::from("//test"), TokenType::Comment, false),
+        ];
+        assert_eq!(result.unwrap(), test_vec);
+    }
+
+    #[test]
+    fn test_alphanumeric_call() {
+        let t = Tokenizer::from(default_ruleset());
+        let input = "call Sys.add12 1";
+        let result = t.tokenize(input);
+        let test_vec = vec![
+            Token::from(String::from("call"), TokenType::Call, true),
+            Token::from(String::from("Sys.add12"), TokenType::Symbol, false),
+            Token::from(String::from("1"), TokenType::Index, false)
         ];
         assert_eq!(result.unwrap(), test_vec);
     }

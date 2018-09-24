@@ -78,11 +78,6 @@ pub fn run(config: Config) -> Result<(), Box<Error>> {
                 .collect()
         }).collect();
 
-    // let tokens: Vec<TokenList> = raw_commands
-    //     .into_iter()
-    //     .map(|string| tokenizer.tokenize(&string).unwrap())
-    //     .collect();
-
     let mut cl: Vec<Command> = vec![];
     for line in tokens {
         let mut parser = Parser::from(line);
@@ -94,10 +89,14 @@ pub fn run(config: Config) -> Result<(), Box<Error>> {
         }
     }
 
-    let out: Vec<String> = cl
+    let mut out: Vec<String> = vec![];
+    
+    out.push(writer.write_init().unwrap());
+
+    out.push(cl
         .into_iter()
         .map(|comm| writer.write_command(comm).unwrap())
-        .collect();
+        .collect());
 
     write_asm_file(out.join(""), &config.outfile).unwrap();
 

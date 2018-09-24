@@ -1,4 +1,6 @@
 use lib::tokenizer::{Token, TokenList, TokenType};
+use std::error::Error;
+use std::fmt;
 
 #[derive(Debug, PartialEq)]
 pub enum Command {
@@ -16,7 +18,8 @@ pub enum Command {
 #[derive(Debug)]
 pub struct Parser {
     tokens: Vec<TokenList>,
-    next_command: usize,
+    next_command: u16,
+    total_commands: u16,
 }
 
 impl Parser {
@@ -24,27 +27,31 @@ impl Parser {
         Parser {
             tokens: vec![],
             next_command: 0,
+            total_commands: 10,
         }
     }
 
     pub fn from(tokens: Vec<TokenList>) -> Parser {
+        let l = tokens.len() as u16;
         Parser {
             tokens,
             next_command: 0,
+            total_commands: l,
         }
     }
 
     pub fn has_more_commands(&self) -> bool {
-        &self.tokens.len() - &self.next_command > 0
+        println!("Total Commands: {}, Next Command {}", self.total_commands, self.next_command);
+        self.total_commands - self.next_command > 0
     }
 
-    pub fn advance(&mut self) -> Result<Option<Command>, &'static str> {
-        let token_list: TokenList = self.tokens.get(self.next_command).unwrap().to_vec();
+    pub fn advance(&mut self) -> Result<Option<Command>, Box<Error>> {
+        let token_list: TokenList = self.tokens.get(self.next_command as usize).unwrap().to_vec();
         self.next_command += 1;
         self.parse(token_list)
     }
 
-    fn parse(&mut self, token_list: TokenList) -> Result<Option<Command>, &'static str> {
+    fn parse(&mut self, token_list: TokenList) -> Result<Option<Command>, Box<Error>> {
         let mut t_iter = token_list.iter();
         //Empty lines or comments should return Ok(None), so the writer knows to skip them. Bad input or syntax should return an Error, so that we can interrupt parsing.
         let mut result: Option<Command> = None;
@@ -61,7 +68,9 @@ impl Parser {
 
         //First word should always be a keyword or command. Throw an error if not
         if !c.is_keyword {
-            return Err("Invalid command: Expected keyword");
+            return Err(Box::new(KeywordError {
+                line_number: self.next_command,
+            }));
         };
 
         //Now we can start parsing the tokens. Use the first token to identify the command type, and route accordingly
@@ -71,33 +80,55 @@ impl Parser {
                 let arg2 = t_iter.next().unwrap();
                 match Parser::mem_access_parse(c, arg1, arg2) {
                     Some(comm) => Some(comm),
-                    None => return Err("Improper arguments for Memory Access Command"),
+                    None => {
+                        return Err(Box::new(ArgumentError {
+                            command_type: String::from("Memory Access"),
+                            line_number: self.next_command,
+                        }))
+                    }
                 }
             }
+
             TokenType::Label | TokenType::If | TokenType::Goto => {
                 let arg1 = t_iter.next().unwrap();
                 match Parser::control_flow_parse(c, arg1) {
                     Some(comm) => Some(comm),
-                    None => return Err("Improper arguments for Control Flow Command"),
+                    None => {
+                        return Err(Box::new(ArgumentError {
+                            command_type: String::from("Control Flow"),
+                            line_number: self.next_command,
+                        }))
+                    }
                 }
             }
             // At this stage, any remaining commands should be Arithmetic
             TokenType::Call | TokenType::Function => {
                 let arg1 = t_iter.next().unwrap();
                 let arg2 = t_iter.next().unwrap();
-                match Parser::function_command_parse(c, arg1, arg2){
+                match Parser::function_command_parse(c, arg1, arg2) {
                     Some(comm) => Some(comm),
-                    None => return Err("Improper arguments for Function Command"),
+                    None => {
+                        return Err(Box::new(ArgumentError {
+                            command_type: String::from("Function"),
+                            line_number: self.next_command,
+                        }))
+                    }
                 }
             }
-            TokenType::Return => {
-                Some(Command::Return)
-            }
+
+            TokenType::Return => Some(Command::Return),
+
             _ => match Parser::arithmetic_parse(c) {
                 Some(comm) => Some(comm),
-                None => return Err("Improper arguments for Arthmetic Command"),
+                None => {
+                    return Err(Box::new(ArgumentError {
+                        command_type: String::from("Function"),
+                        line_number: self.next_command,
+                    }))
+                }
             },
         };
+        // self.next_command += 1;
 
         Ok(result)
     }
@@ -225,3 +256,40 @@ mod test {
     }
 
 }
+
+// #[derive(Debug)]
+// enum ParserError {
+//     ArgumentError(ArgumentError),
+//     KeywordError(KeywordError),
+// }
+
+#[derive(Debug)]
+struct ArgumentError {
+    command_type: String,
+    line_number: u16,
+}
+
+impl fmt::Display for ArgumentError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "Improper arguments for {} command at line {}",
+            self.command_type, self.line_number
+        )
+    }
+}
+
+impl Error for ArgumentError {}
+
+#[derive(Debug)]
+struct KeywordError {
+    line_number: u16,
+}
+
+impl fmt::Display for KeywordError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Expected keyword at line {}", self.line_number)
+    }
+}
+
+impl Error for KeywordError {}
