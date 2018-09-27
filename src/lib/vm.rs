@@ -14,6 +14,7 @@ use std::path::PathBuf;
 pub struct Config {
     pub filevec: Vec<PathBuf>,
     pub outfile: PathBuf,
+    pub write_init: bool,
 }
 
 impl Config {
@@ -25,6 +26,14 @@ impl Config {
             None => {
                 return Err(Box::new(FileTypeError));
             }
+        };
+
+        let write_init = match args.next() {
+            Some(arg) => match arg.as_ref() {
+                "--no-init" => false,
+                _ => return Err(Box::new(InvalidArgError)),
+            },
+            None => true,
         };
 
         let of = path.clone();
@@ -45,7 +54,11 @@ impl Config {
             },
         };
 
-        Ok(Config { filevec, outfile })
+        Ok(Config {
+            filevec,
+            outfile,
+            write_init,
+        })
     }
 }
 
@@ -90,13 +103,16 @@ pub fn run(config: Config) -> Result<(), Box<Error>> {
     }
 
     let mut out: Vec<String> = vec![];
-    
-    out.push(writer.write_init().unwrap());
 
-    out.push(cl
-        .into_iter()
-        .map(|comm| writer.write_command(comm).unwrap())
-        .collect());
+    if config.write_init {
+        out.push(writer.write_init().unwrap());
+    }
+
+    out.push(
+        cl.into_iter()
+            .map(|comm| writer.write_command(comm).unwrap())
+            .collect(),
+    );
 
     write_asm_file(out.join(""), &config.outfile).unwrap();
 
@@ -119,7 +135,7 @@ fn get_vmfiles_in_path(path: PathBuf) -> IOResult<Vec<PathBuf>> {
         if let Some(ext) = &path.extension() {
             if let Some(ext_str) = ext.to_str() {
                 println!("Extension: {}", ext_str);
-                if ext_str == "vm"{
+                if ext_str == "vm" {
                     out.push(path.clone());
                 }
             }
@@ -138,3 +154,14 @@ impl fmt::Display for FileTypeError {
 }
 
 impl Error for FileTypeError {}
+
+#[derive(Debug)]
+struct InvalidArgError;
+
+impl fmt::Display for InvalidArgError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Invalid command or option")
+    }
+}
+
+impl Error for InvalidArgError {}

@@ -19,11 +19,11 @@ impl AsmWriter {
     }
 
     pub fn write_init(&mut self) -> Result<String, &'static str> {
-        // let stepvec = vec![
-            Ok(String::from("@256\nD=A\n@SP\nM=D\n@Sys.init\n0;JMP\n"))
-        //     self.write_call(String::from("Sys.init"), 0).unwrap()
-        // ];
-        // Ok(stepvec.join(""))
+        let stepvec = vec![
+            String::from("@256\nD=A\n@SP\nM=D\n"),
+           self.write_call(String::from("Sys.init"), 0).unwrap()
+         ];
+        Ok(stepvec.join(""))
     }
 
     pub fn write_command(&mut self, command: Command) -> Result<String, &'static str> {
@@ -118,7 +118,7 @@ impl AsmWriter {
 
     fn write_call(&mut self, symbol: String, nargs: u16) -> Result<String, &'static str> {
         let stepvec = vec![
-            format!("@RET-{}\n", symbol),
+            format!("@RET-{}${}\n", symbol, self.line_count),
             AsmWriter::push_from_a(),
             String::from("@LCL\n"),
             AsmWriter::push_from_m(),
@@ -133,7 +133,7 @@ impl AsmWriter {
                 nargs + 5
             ),
             self.write_goto(symbol.clone()).unwrap(),
-            format!("(RET-{})\n", symbol),
+            format!("(RET-{}${})\n", symbol, self.line_count),
         ];
         Ok(stepvec.join(""))
     }
@@ -148,7 +148,7 @@ impl AsmWriter {
     }
 
     fn write_return(&self) -> Result<String, &'static str> {
-        let stepvec = vec![String::from("@LCL\nD=M\n@R14\nM=D\n@5\nD=D-A\n@R15\nM=D\n"),
+        let stepvec = vec![String::from("@LCL\nD=M\n@R14\nM=D\n@5\nA=D-A\nD=M\n@R15\nM=D\n"),
         self.write_pop(String::from("argument"), 0).unwrap(),
         String::from("@ARG\nD=M+1\n@SP\nM=D\n@R14\nAM=M-1\nD=M\n@THAT\nM=D\n@R14\nAM=M-1\nD=M\n@THIS\nM=D\n@R14\nAM=M-1\nD=M\n@ARG\nM=D\n@R14\nAM=M-1\nD=M\n@LCL\nM=D\n@R15\nA=M\n0;JMP\n")];
 
@@ -165,7 +165,7 @@ impl AsmWriter {
 
     fn write_if(&mut self, label: String) -> Result<String, &'static str> {
         let mut out = AsmWriter::write_pop_to_d();
-        out.push_str(&format!("@{}\nD;JGT\n", label));
+        out.push_str(&format!("@{}\nD;JLT\n", label));
         Ok(out)
     }
 
