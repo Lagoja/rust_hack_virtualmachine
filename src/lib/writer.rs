@@ -310,10 +310,9 @@ mod tests {
         assert_eq!(
             out.unwrap(),
             String::from(
-                "@SP
+                "//Command #0\n@SP
 AM=M-1
 D=M
-M=0
 @SP
 AM=M-1
 D=D+M
@@ -337,7 +336,6 @@ M=M+1
                 "@SP
 AM=M-1
 D=M
-M=0
 @SP
 AM=M-1
 D=D+M
@@ -359,7 +357,7 @@ M=M+1
         assert_eq!(
             out.unwrap(),
             String::from(
-                "@SP\nAM=M-1\nD=M\nM=0\n@SP\nAM=M-1\nD=M-D
+                "//Command #0\n@SP\nAM=M-1\nD=M\n@SP\nAM=M-1\nD=M-D
 @BRANCH0
 D;JEQ
 D=0
