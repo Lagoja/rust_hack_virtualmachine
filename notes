@@ -73,7 +73,7 @@ D;JGT
 //Call g nargs
 // Assume args are already pushed onto the stack
 @RETURN{g}
- -> PUSH_FROM_M
+ -> PUSH_FROM_A
 @LCL
  -> PUSH_FROM_M
 @ARG 
@@ -114,7 +114,7 @@ D=M+1
 M=D
 //Restore THAT
 @R14
-AM=M-1
+AM=M-1 //A=LCL-1, M=LCL-1
 D=M
 @THAT
 M=D

@@ -4,7 +4,7 @@ use lib::tokenizer::TokenType;
 
 #[derive(Debug)]
 pub struct AsmWriter {
-    pointer: u16,
+    line_count: u16,
     branch_count: u16,
     symbol_table: SymbolTable,
 }
@@ -12,25 +12,36 @@ pub struct AsmWriter {
 impl AsmWriter {
     pub fn from(symbol_table: SymbolTable) -> AsmWriter {
         AsmWriter {
-            pointer: 0,
+            line_count: 0,
             branch_count: 0,
             symbol_table,
         }
     }
 
+    pub fn write_init(&mut self) -> Result<String, &'static str> {
+        let stepvec = vec![
+            String::from("@256\nD=A\n@SP\nM=D\n"),
+           self.write_call(String::from("Sys.init"), 0).unwrap()
+         ];
+        Ok(stepvec.join(""))
+    }
+
     pub fn write_command(&mut self, command: Command) -> Result<String, &'static str> {
-        match command {
-            Command::Push { segment, index } => self.write_push(segment, index),
-            Command::Pop { segment, index } => self.write_pop(segment, index),
-            Command::Arithmetic(token_type) => self.write_arithmetic(token_type),
-            Command::If(label) => self.write_if(label),
-            Command::Goto(label) => self.write_goto(label),
-            Command::Label(label) => self.write_label(label),
-            Command::Call { symbol, nargs } => self.write_call(symbol, nargs),
-            Command::Function { symbol, nvars } => self.write_function(symbol, nvars),
-            Command::Return => self.write_return(),
-            _ => Err("Command not implemented"),
-        }
+        let mut outstr = format!("//Command #{}\n", self.line_count);
+        let comm = match command {
+            Command::Push { segment, index } => self.write_push(segment, index)?,
+            Command::Pop { segment, index } => self.write_pop(segment, index)?,
+            Command::Arithmetic(token_type) => self.write_arithmetic(token_type)?,
+            Command::If(label) => self.write_if(label)?,
+            Command::Goto(label) => self.write_goto(label)?,
+            Command::Label(label) => self.write_label(label)?,
+            Command::Call { symbol, nargs } => self.write_call(symbol, nargs)?,
+            Command::Function { symbol, nvars } => self.write_function(symbol, nvars)?,
+            Command::Return => self.write_return()?,
+        };
+        self.line_count += 1;
+        outstr.push_str(&comm);
+        Ok(outstr)
     }
 
     fn write_push(&self, segment: String, index: u16) -> Result<String, &'static str> {
@@ -107,7 +118,8 @@ impl AsmWriter {
 
     fn write_call(&mut self, symbol: String, nargs: u16) -> Result<String, &'static str> {
         let stepvec = vec![
-            format!("@RET-{}\n", symbol),
+            format!("@RET-{}${}\n", symbol, self.line_count),
+            AsmWriter::push_from_a(),
             String::from("@LCL\n"),
             AsmWriter::push_from_m(),
             String::from("@ARG\n"),
@@ -117,11 +129,11 @@ impl AsmWriter {
             String::from("@THAT\n"),
             AsmWriter::push_from_m(),
             format!(
-                "@SP\nD=M\n@{}\nD=D-A\n@ARG\nM=D\n@SP\nD=M\n@LCL\nM=D",
+                "@SP\nD=M\n@{}\nD=D-A\n@ARG\nM=D\n@SP\nD=M\n@LCL\nM=D\n",
                 nargs + 5
             ),
             self.write_goto(symbol.clone()).unwrap(),
-            format!("(RET-{})\n", symbol),
+            format!("(RET-{}${})\n", symbol, self.line_count),
         ];
         Ok(stepvec.join(""))
     }
@@ -136,9 +148,9 @@ impl AsmWriter {
     }
 
     fn write_return(&self) -> Result<String, &'static str> {
-        let stepvec = vec![String::from("@LCL\nD=M\n@R14\nM=D\n@5\nD=D-A\n@R15\nM=D\n"),
+        let stepvec = vec![String::from("@LCL\nD=M\n@R14\nM=D\n@5\nA=D-A\nD=M\n@R15\nM=D\n"),
         self.write_pop(String::from("argument"), 0).unwrap(),
-        String::from("@ARG\nD=M+1\n@SP\nM=D\n@R14\nAM=M-1\nD=M\n@THAT\nM=D\n@R14\nAM=M-1\nD=M\n@THIS\nM=D\n@R14\nAM=M-1\nD=M\n@ARG\nM=D\n@R14\nAM=M-1\nD=M\n@LCL\nM=D\n@R15\nA=M\n0;JMP")];
+        String::from("@ARG\nD=M+1\n@SP\nM=D\n@R14\nAM=M-1\nD=M\n@THAT\nM=D\n@R14\nAM=M-1\nD=M\n@THIS\nM=D\n@R14\nAM=M-1\nD=M\n@ARG\nM=D\n@R14\nAM=M-1\nD=M\n@LCL\nM=D\n@R15\nA=M\n0;JMP\n")];
 
         Ok(stepvec.join(""))
     }
@@ -153,7 +165,7 @@ impl AsmWriter {
 
     fn write_if(&mut self, label: String) -> Result<String, &'static str> {
         let mut out = AsmWriter::write_pop_to_d();
-        out.push_str(&format!("@{}\nD;JGT\n", label));
+        out.push_str(&format!("@{}\nD;JLT\n", label));
         Ok(out)
     }
 
@@ -185,26 +197,8 @@ impl AsmWriter {
     }
 
     fn write_comparison(&self, instruction: &str) -> String {
-        let out = format!("D=M-D
-@BRANCH{bcount}
-D;{in}
-D=0
-@SP
-A=M
-M=D
-@SP
-M=M+1
-@BRANCH{bcount}END
-0;JMP
-(BRANCH{bcount})
-D=-1
-@SP
-A=M
-M=D
-@SP
-M=M+1
-(BRANCH{bcount}END)
-",in=instruction, bcount=self.branch_count);
+        let out = format!("D=M-D\n@BRANCH{bcount}\nD;{in}\nD=0\n@SP\nA=M\nM=D\n@SP\nM=M+1\n@BRANCH{bcount}END\n0;JMP\n(BRANCH{bcount})\nD=-1\n@SP\nA=M\nM=D\n@SP\nM=M+1\n(BRANCH{bcount}END)\n",
+        in=instruction, bcount=self.branch_count);
         String::from(out)
     }
 
@@ -287,7 +281,7 @@ M=M+1
 
     fn write_pop_to_d() -> String {
         //Puts the value in D
-        String::from("@SP\nAM=M-1\nD=M\nM=0\n")
+        String::from("@SP\nAM=M-1\nD=M\n")
     }
 
     fn peek_next_value() -> String {
@@ -316,10 +310,9 @@ mod tests {
         assert_eq!(
             out.unwrap(),
             String::from(
-                "@SP
+                "//Command #0\n@SP
 AM=M-1
 D=M
-M=0
 @SP
 AM=M-1
 D=D+M
@@ -343,7 +336,6 @@ M=M+1
                 "@SP
 AM=M-1
 D=M
-M=0
 @SP
 AM=M-1
 D=D+M
@@ -365,7 +357,7 @@ M=M+1
         assert_eq!(
             out.unwrap(),
             String::from(
-                "@SP\nAM=M-1\nD=M\nM=0\n@SP\nAM=M-1\nD=M-D
+                "//Command #0\n@SP\nAM=M-1\nD=M\n@SP\nAM=M-1\nD=M-D
 @BRANCH0
 D;JEQ
 D=0

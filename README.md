@@ -14,7 +14,7 @@
     - [X] equal
 - [X] Pointer references
 ## Phase Two
-- [ ] Multi-file support (pass a directory and process all .vm files inside)
+- [X] Multi-file support (pass a directory and process all .vm files inside)
 - [X] Program Control Flow 
     - [X] label
     - [X] goto-label
@@ -23,7 +23,8 @@
     - [X] function declaration
     - [X] call function
     - [X] return function
-- [] Bootstrapping
+- [X] Bootstrapping
+- [ ] Static vars
 ## Phase Three
-- [ ] Better Error Handling (w/ line number)
+- [X] Better Error Handling (w/ line number)
 - [ ] DRY up writer and other sections
