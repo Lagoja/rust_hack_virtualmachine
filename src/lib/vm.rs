@@ -2,6 +2,7 @@ use lib::parser::{Command, Parser};
 use lib::symbol_table::SymbolTable;
 use lib::tokenizer::{default_ruleset, TokenList, Tokenizer};
 use lib::writer::AsmWriter;
+use std::collections::HashMap;
 use std::env;
 use std::error::Error;
 use std::fmt;
@@ -63,37 +64,42 @@ impl Config {
 }
 
 pub fn run(config: Config) -> Result<(), Box<Error>> {
-    let mut filelist: Vec<Vec<String>> = vec![];
+    let mut file_map: HashMap<String, Vec<String>> = HashMap::new();
 
     for filename in config.filevec {
         println!("Loading file {}", filename.to_str().unwrap());
-        let f: fs::File = fs::File::open(filename)?;
+        let f: fs::File = fs::File::open(&filename)?;
         let br = BufReader::new(f);
         let raw_commands: Vec<String> = br
             .lines()
             .map(|l| l.expect("Could not load file"))
             .collect();
-        filelist.push(raw_commands);
+        file_map.insert(
+            String::from(filename.file_stem().unwrap().to_string_lossy()),
+            raw_commands,
+        );
     }
 
     let mut st: SymbolTable = SymbolTable::new();
     st.load_starting_table();
     let mut writer: AsmWriter = AsmWriter::from(st);
 
-    // let tokens: Vec<TokenList> = filelist.map
-    let tokens: Vec<Vec<TokenList>> = filelist
-        .into_iter()
-        .map(|raw_commands| {
-            let tokenizer = Tokenizer::from(default_ruleset());
+    let mut tokens: HashMap<String, Vec<TokenList>> = HashMap::new();
+
+    for (filename, raw_commands) in file_map {
+        let tokenizer = Tokenizer::from(default_ruleset());
+        tokens.insert(
+            filename,
             raw_commands
                 .into_iter()
                 .map(|string| tokenizer.tokenize(&string).unwrap())
-                .collect()
-        }).collect();
+                .collect(),
+        );
+    }
 
     let mut cl: Vec<Command> = vec![];
-    for line in tokens {
-        let mut parser = Parser::from(line);
+    for (filename, line) in tokens {
+        let mut parser = Parser::from(line, filename);
         while parser.has_more_commands() {
             match parser.advance()? {
                 Some(comm) => cl.push(comm),

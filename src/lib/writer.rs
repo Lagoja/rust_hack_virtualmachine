@@ -21,16 +21,24 @@ impl AsmWriter {
     pub fn write_init(&mut self) -> Result<String, &'static str> {
         let stepvec = vec![
             String::from("@256\nD=A\n@SP\nM=D\n"),
-           self.write_call(String::from("Sys.init"), 0).unwrap()
-         ];
+            self.write_call(String::from("Sys.init"), 0).unwrap(),
+        ];
         Ok(stepvec.join(""))
     }
 
     pub fn write_command(&mut self, command: Command) -> Result<String, &'static str> {
         let mut outstr = format!("//Command #{}\n", self.line_count);
         let comm = match command {
-            Command::Push { segment, index } => self.write_push(segment, index)?,
-            Command::Pop { segment, index } => self.write_pop(segment, index)?,
+            Command::Push {
+                segment,
+                index,
+                class_name,
+            } => self.write_push(segment, index, class_name)?,
+            Command::Pop {
+                segment,
+                index,
+                class_name,
+            } => self.write_pop(segment, index, class_name)?,
             Command::Arithmetic(token_type) => self.write_arithmetic(token_type)?,
             Command::If(label) => self.write_if(label)?,
             Command::Goto(label) => self.write_goto(label)?,
@@ -44,11 +52,21 @@ impl AsmWriter {
         Ok(outstr)
     }
 
-    fn write_push(&self, segment: String, index: u16) -> Result<String, &'static str> {
+    fn write_push(
+        &self,
+        segment: String,
+        index: u16,
+        class_name: String,
+    ) -> Result<String, &'static str> {
         let stepvec: Vec<String>;
         let seg: Address;
         if segment == "constant" {
             stepvec = vec![AsmWriter::constant_to_a(index), AsmWriter::push_from_a()];
+        } else if segment == "static" {
+            stepvec = vec![
+                String::from(format!("@{}.{}\nA=M\n", class_name, index)),
+                AsmWriter::push_from_a(),
+            ]
         } else {
             seg = match self.symbol_table.get_address(&segment) {
                 Some(address) => *address,
@@ -72,11 +90,21 @@ impl AsmWriter {
         Ok(stepvec.join(""))
     }
 
-    fn write_pop(&self, segment: String, index: u16) -> Result<String, &'static str> {
+    fn write_pop(
+        &self,
+        segment: String,
+        index: u16,
+        class_name: String,
+    ) -> Result<String, &'static str> {
         let stepvec: Vec<String>;
         let seg: Address;
         if segment == "constant" {
             return Err("Cannot pop to constant");
+        } else if segment == "static" {
+            stepvec = vec![
+                AsmWriter::write_pop_to_d(),
+                String::from(format!("@{}.{}\nM=D\n", class_name, index)),
+            ]
         } else {
             seg = match self.symbol_table.get_address(&segment) {
                 Some(address) => *address,
@@ -141,7 +169,10 @@ impl AsmWriter {
     fn write_function(&self, symbol: String, mut nvars: u16) -> Result<String, &'static str> {
         let mut stepvec = vec![format!("({})\n", symbol)];
         while nvars > 0 {
-            stepvec.push(self.write_push(String::from("constant"), 0).unwrap());
+            stepvec.push(
+                self.write_push(String::from("constant"), 0, String::new())
+                    .unwrap(),
+            );
             nvars -= 1;
         }
         Ok(stepvec.join(""))
@@ -149,7 +180,7 @@ impl AsmWriter {
 
     fn write_return(&self) -> Result<String, &'static str> {
         let stepvec = vec![String::from("@LCL\nD=M\n@R14\nM=D\n@5\nA=D-A\nD=M\n@R15\nM=D\n"),
-        self.write_pop(String::from("argument"), 0).unwrap(),
+        self.write_pop(String::from("argument"), 0, String::new()).unwrap(),
         String::from("@ARG\nD=M+1\n@SP\nM=D\n@R14\nAM=M-1\nD=M\n@THAT\nM=D\n@R14\nAM=M-1\nD=M\n@THIS\nM=D\n@R14\nAM=M-1\nD=M\n@ARG\nM=D\n@R14\nAM=M-1\nD=M\n@LCL\nM=D\n@R15\nA=M\n0;JMP\n")];
 
         Ok(stepvec.join(""))
@@ -298,6 +329,36 @@ mod tests {
         assert_eq!(
             AsmWriter::save_segment_addr_to_r13("LCL", 2),
             String::from("@LCL\nD=M\n@2\nD=D+A\n@R13\nM=D\n")
+        );
+    }
+
+    #[test]
+    fn test_push_static() {
+        let st = SymbolTable::new();
+        let mut writer = AsmWriter::from(st);
+        let out = writer.write_command(Command::Push {
+            segment: String::from("static"),
+            index: 0,
+            class_name: String::from("Main"),
+        });
+        assert_eq!(
+            out.unwrap(),
+            String::from("//Command #0\n@Main.0\nA=M\nD=A\n@SP\nA=M\nM=D\n@SP\nM=M+1\n")
+        );
+    }
+
+    #[test]
+    fn test_pop_static() {
+        let st = SymbolTable::new();
+        let mut writer = AsmWriter::from(st);
+        let out = writer.write_command(Command::Pop {
+            segment: String::from("static"),
+            index: 0,
+            class_name: String::from("Main"),
+        });
+        assert_eq!(
+            out.unwrap(),
+            String::from("//Command #0\n@SP\nAM=M-1\nD=M\n@Main.0\nM=D\n")
         );
     }
 

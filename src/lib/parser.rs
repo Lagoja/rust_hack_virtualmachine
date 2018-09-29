@@ -4,8 +4,8 @@ use std::fmt;
 
 #[derive(Debug, PartialEq)]
 pub enum Command {
-    Push { segment: String, index: u16 },
-    Pop { segment: String, index: u16 },
+    Push { segment: String, index: u16, class_name: String },
+    Pop { segment: String, index: u16, class_name: String},
     Arithmetic(TokenType),
     Goto(String),
     If(String),
@@ -20,6 +20,7 @@ pub struct Parser {
     tokens: Vec<TokenList>,
     next_command: u16,
     total_commands: u16,
+    class_name: String
 }
 
 impl Parser {
@@ -28,15 +29,17 @@ impl Parser {
             tokens: vec![],
             next_command: 0,
             total_commands: 10,
+            class_name: String::new()
         }
     }
 
-    pub fn from(tokens: Vec<TokenList>) -> Parser {
+    pub fn from(tokens: Vec<TokenList>, class_name: String) -> Parser {
         let l = tokens.len() as u16;
         Parser {
             tokens,
             next_command: 0,
             total_commands: l,
+            class_name
         }
     }
 
@@ -78,7 +81,7 @@ impl Parser {
             TokenType::Pop | TokenType::Push => {
                 let arg1 = t_iter.next().unwrap();
                 let arg2 = t_iter.next().unwrap();
-                match Parser::mem_access_parse(c, arg1, arg2) {
+                match Parser::mem_access_parse(c, arg1, arg2, self.class_name.clone()) {
                     Some(comm) => Some(comm),
                     None => {
                         return Err(Box::new(ArgumentError {
@@ -133,16 +136,18 @@ impl Parser {
         Ok(result)
     }
 
-    fn mem_access_parse(c: &Token, arg1: &Token, arg2: &Token) -> Option<Command> {
+    fn mem_access_parse(c: &Token, arg1: &Token, arg2: &Token, class_name: String) -> Option<Command> {
         if arg1.token_type == TokenType::Symbol && arg2.token_type == TokenType::Index {
             match c.token_type {
                 TokenType::Push => Some(Command::Push {
                     segment: String::from(arg1.token.clone()),
                     index: arg2.token.parse::<u16>().unwrap(),
+                    class_name
                 }),
                 TokenType::Pop => Some(Command::Pop {
                     segment: String::from(arg1.token.clone()),
                     index: arg2.token.parse::<u16>().unwrap(),
+                    class_name
                 }),
                 _ => return None,
             }
@@ -208,7 +213,8 @@ mod test {
             output.unwrap(),
             Some(Command::Push {
                 segment: String::from("local"),
-                index: 0
+                index: 0,
+                class_name: String::new()
             })
         );
     }
